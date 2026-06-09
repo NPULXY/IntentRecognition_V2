@@ -170,18 +170,31 @@ def compute_per_target_features(trajectory: np.ndarray, N: int):
     res_pos_padded[:, 10:] = res_pos_norm
     res_vel_padded[:, 10:] = res_vel_norm
 
-    # 时间戳特征：步索引/总步数 + 步长标记
-    # X_now全为1s步长，X_next部分可能含60s步长（用远大于1的残差标记）
+    # 成对夹角特征（直接与 phi 相关）：每个目标与其他目标的cos夹角统计量
+    cos_min = np.zeros((N, 20), dtype=np.float32)
+    cos_max = np.zeros((N, 20), dtype=np.float32)
+    cos_mean = np.zeros((N, 20), dtype=np.float32)
+    if N >= 2:
+        for i in range(N):
+            r_i = pos[i]
+            r_i_norm = np.linalg.norm(r_i, axis=-1) + 1e-10
+            others = []
+            for j in range(N):
+                if i == j:
+                    continue
+                r_j = pos[j]
+                r_j_norm = np.linalg.norm(r_j, axis=-1) + 1e-10
+                others.append(np.sum(r_i * r_j, axis=-1) / (r_i_norm * r_j_norm))
+            others = np.stack(others, axis=0)
+            cos_min[i] = others.min(axis=0)
+            cos_max[i] = others.max(axis=0)
+            cos_mean[i] = others.mean(axis=0)
 
-    # 拼接所有特征: (N, 20, 7)
+    # 拼接所有特征: (N, 20, 10)
     features = np.stack([
-        r,
-        v,
-        v_radial,
-        h,
-        energy,
-        res_pos_padded,
-        res_vel_padded,
+        r, v, v_radial, h, energy,
+        res_pos_padded, res_vel_padded,
+        cos_min, cos_max, cos_mean,
     ], axis=-1)
 
     return features
@@ -235,28 +248,18 @@ def compute_sample_physics_features(trajectory: np.ndarray, N: int):
     为单个样本计算完整的物理特征。
 
     返回:
-        per_target_feats: (N, 20, 7) 每目标特征
+        per_target_feats: (N, 20, 10) 每目标特征
         global_feats: (9,) 全局特征
-            - 所有目标在所有时刻的最小距离
-            - 所有目标在所有时刻的最大距离
-            - 目标间平均距离
-            - 目标间最小距离
-            - 目标间平均夹角
-            - 最近时刻的"分散度"
-            - 所有目标平均速度
-            - 所有目标速度标准差
-            - 每目标对的最小相对距离均值
     """
     per_target_feats = compute_per_target_features(trajectory, N)
     pair_feats = compute_inter_target_features(trajectory, N)
 
-    pos = trajectory[:N, :, 0:3]  # (N, 20, 3)
-    vel = trajectory[:N, :, 3:6]  # (N, 20, 3)
+    pos = trajectory[:N, :, 0:3]
+    vel = trajectory[:N, :, 3:6]
 
-    # 所有距离值
-    all_distances = np.linalg.norm(pos, axis=-1).flatten()  # (N*20,)
+    all_distances = np.linalg.norm(pos, axis=-1).flatten()
 
-    global_feats = np.zeros(9, dtype=np.float32)
+    global_feats = np.zeros(config.GLOBAL_FEAT_DIM, dtype=np.float32)
     global_feats[0] = np.min(all_distances)
     global_feats[1] = np.max(all_distances)
 

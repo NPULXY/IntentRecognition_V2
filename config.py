@@ -45,10 +45,14 @@ MAX_EPOCHS = 200
 EARLY_STOP_PATIENCE = 30
 LR_T0 = 20  # CosineAnnealingWarmRestarts 周期
 
+# 特征维度
+PHYS_FEAT_DIM = 10  # 每目标物理特征通道数
+GLOBAL_FEAT_DIM = 9  # 全局特征维度
+
 # 多任务损失权重
 LOSS_WEIGHT_N = 1.0
 LOSS_WEIGHT_DIST = 1.0
-LOSS_WEIGHT_PHI = 0.5
+LOSS_WEIGHT_PHI = 2.0
 
 # ─── 数据集划分 ──────────────────────────────────────
 TRAIN_RATIO = 0.70

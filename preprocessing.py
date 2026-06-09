@@ -63,7 +63,7 @@ def compute_normalization_stats(train_samples):
         N = s["N"]
         all_pos.append(s["trajectory"][:N, :, 0:3].reshape(-1, 3))
         all_vel.append(s["trajectory"][:N, :, 3:6].reshape(-1, 3))
-        all_feats.append(s["per_target_feats"][:N].reshape(-1, 7))
+        all_feats.append(s["per_target_feats"][:N].reshape(-1, s["per_target_feats"].shape[-1]))
         all_global.append(s["global_feats"])
         all_y.append(s["y"])
 

@@ -138,13 +138,13 @@ def print_metrics(metrics, title="评估结果"):
     print(f"\n--- min_distance 回归 ---")
     print(f"  MAE:          {metrics['dist_mae_km']:.4f} km")
     print(f"  RMSE:         {metrics['dist_rmse_km']:.4f} km")
-    print(f"  R²:           {metrics['dist_r2']:.4f}")
+    print(f"  R^2:           {metrics['dist_r2']:.4f}")
 
     print(f"\n--- phi 回归 ---")
     print(f"  MAE:          {metrics['phi_mae_rad']:.4f} rad")
     print(f"  RMSE:         {metrics['phi_rmse_rad']:.4f} rad")
     print(f"  Circular MAE: {metrics['phi_mae_circular_rad']:.4f} rad")
-    print(f"  R²:           {metrics['phi_r2']:.4f}")
+    print(f"  R^2:          {metrics['phi_r2']:.4f}")
 
     print("=" * 60)
 
