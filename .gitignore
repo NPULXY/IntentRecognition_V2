@@ -34,6 +34,9 @@ predictions/
 .DS_Store
 Thumbs.db
 
-# 数据和任务描述（不提交）
+# 数据集CSV（不提交——文件过大）
 Dataset/*.csv
+Dataset_Summary/*.csv
+
+# 任务描述（不提交）
 Prompt.md
