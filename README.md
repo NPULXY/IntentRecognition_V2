@@ -189,7 +189,7 @@ python main.py eval
 python main.py predict
 ```
 
-生成 `predictions/Y.csv`，格式与真实标签一致（phi 已裁剪至 [0, π] 物理有效范围）。
+生成 `predictions/Y_pred.csv`，格式与真实标签一致（phi 已裁剪至 [0, π] 物理有效范围）。
 
 ### 配置文件
 

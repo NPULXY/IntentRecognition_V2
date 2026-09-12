@@ -1,22 +1,64 @@
 """
-推理：加载训练好的模型，对全量数据或指定输入生成 Y.csv 预测文件。
+推理：加载训练好的模型，对全量数据或指定输入生成 Y_pred.csv 预测文件。
+
+预测模式下使用 X_now.csv（观测数据）和 X_pred.csv（TrajectoryPrediction 输出），
+而非 X_next.csv（真实未来状态）。
 """
 
 import os
-import ast
+import json
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
 import config
 from data_loader import (
-    load_raw_data,
     reshape_sample,
     ProcessedDataset,
     collate_fn,
+    parse_csv_row,
 )
 from model import IntentRecognitionModel
 from preprocessing import load_norm_stats, prepare_inference_data
+
+
+def robust_parse(line):
+    """健壮解析：兼容有无引号包裹的嵌套列表格式。使用json.loads避免ast兼容性问题。"""
+    raw = json.loads(line.strip())
+    # X_pred.csv 可能被双引号包裹，导致第一次解析得到字符串而非列表
+    if isinstance(raw, str):
+        raw = json.loads(raw)
+    return raw
+
+
+def load_data_for_prediction(x_pred_path=None):
+    """
+    为预测加载数据：X_now.csv + X_pred.csv（替换 X_next.csv）。
+
+    参数:
+        x_pred_path: X_pred.csv 的路径，默认使用 config.X_PRED_PATH。
+
+    返回:
+        x_now_raw, x_pred_raw: 原始解析后的列表
+    """
+    if x_pred_path is None:
+        x_pred_path = config.X_PRED_PATH
+
+    with open(config.X_NOW_PATH, "r") as f:
+        x_now_raw = [parse_csv_row(line) for line in f.readlines()[1:]]
+
+    with open(x_pred_path, "r") as f:
+        x_pred_raw = [robust_parse(line) for line in f.readlines()[1:]]
+
+    assert len(x_now_raw) == len(x_pred_raw), (
+        f"X_now.csv ({len(x_now_raw)}行) 与 X_pred.csv ({len(x_pred_raw)}行) 行数不一致"
+    )
+
+    print(f"  加载 X_now.csv: {config.X_NOW_PATH}")
+    print(f"  加载 X_pred.csv: {x_pred_path}")
+    print(f"  样本数: {len(x_now_raw)}")
+
+    return x_now_raw, x_pred_raw
 
 
 @torch.no_grad()
@@ -73,20 +115,24 @@ def predict(model, dataloader, stats, device=None):
     return y_predictions
 
 
-def generate_predictions(model_path=None, output_path=None, device=None):
+def generate_predictions(model_path=None, output_path=None, device=None,
+                          x_pred_path=None, use_predicted_future=True):
     """
-    加载模型，对全量数据预测，生成 Y.csv。
+    加载模型，对全量数据预测，生成 Y_pred.csv。
 
     参数:
         model_path: 模型权重路径，默认使用 checkpoint/best_model.pt
-        output_path: 输出路径，默认使用 predictions/Y.csv
+        output_path: 输出路径，默认使用 predictions/Y_pred.csv
+        device: 计算设备
+        x_pred_path: X_pred.csv 路径（TrajectoryPrediction 输出）
+        use_predicted_future: 若为 True，使用 X_pred.csv 代替 X_next.csv
     """
     if device is None:
         device = config.DEVICE
     if model_path is None:
         model_path = os.path.join(config.CHECKPOINT_DIR, "best_model.pt")
     if output_path is None:
-        output_path = os.path.join(config.PREDICTION_DIR, "Y.csv")
+        output_path = os.path.join(config.PREDICTION_DIR, "Y_pred.csv")
 
     print("=" * 60)
     print("生成预测")
@@ -102,12 +148,21 @@ def generate_predictions(model_path=None, output_path=None, device=None):
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
-    # 加载并预处理全量数据
-    print("加载原始数据...")
-    x_now_raw, x_next_raw, _ = load_raw_data()
+    # 加载并预处理数据
+    if use_predicted_future:
+        print("加载原始数据（预测模式：X_now.csv + X_pred.csv）...")
+        x_now_raw, x_future_raw = load_data_for_prediction(x_pred_path)
+    else:
+        # 传统模式：读取 X_next.csv（用于训练后的验证）
+        print("加载原始数据（验证模式：X_now.csv + X_next.csv）...")
+        with open(config.X_NOW_PATH, "r") as f:
+            x_now_raw = [parse_csv_row(line) for line in f.readlines()[1:]]
+        with open(config.X_NEXT_PATH, "r") as f:
+            x_future_raw = [parse_csv_row(line) for line in f.readlines()[1:]]
+        assert len(x_now_raw) == len(x_future_raw)
 
     print("预处理数据（物理特征 + 归一化）...")
-    samples = prepare_inference_data(x_now_raw, x_next_raw, stats)
+    samples = prepare_inference_data(x_now_raw, x_future_raw, stats)
 
     # 创建 DataLoader
     dataset = ProcessedDataset(samples)

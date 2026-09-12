@@ -3,7 +3,7 @@
 用法:
     python main.py train          # 训练模型
     python main.py eval           # 在测试集上评估
-    python main.py predict        # 生成预测的 Y.csv
+    python main.py predict        # 生成预测的 Y_pred.csv
 """
 
 import sys
@@ -29,8 +29,8 @@ def main():
         # 数据准备
         train_loader, val_loader, test_loader, stats = prepare_data()
 
-        # 训练
-        model, history = train_model(train_loader, val_loader, device)
+        # 训练（传入 stats 以记录物理量纲的验证指标）
+        model, history = train_model(train_loader, val_loader, device, stats)
 
         # 在测试集上快速评估
         print("\n在测试集上评估最佳模型...")
@@ -51,8 +51,8 @@ def main():
         run_evaluation(model, test_loader, device)
 
     elif command == "predict":
-        # 生成预测
-        generate_predictions(device=device)
+        # 生成预测（使用 TrajectoryPrediction 输出的 X_pred.csv 代替 X_next.csv）
+        generate_predictions(device=device, use_predicted_future=True)
 
     else:
         print(f"未知命令: {command}")
