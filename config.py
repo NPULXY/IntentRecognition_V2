@@ -7,13 +7,17 @@ import torch
 
 # ─── 路径 ───────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "Dataset_Summary")
+# 数据集统一存放于工作空间顶层的 Dataset/，各项目共享同一份，避免重复副本（2026-09-13 归并）
+WS_ROOT = os.path.dirname(BASE_DIR)
+DATA_DIR = os.path.join(WS_ROOT, "Dataset")
 X_NOW_PATH = os.path.join(DATA_DIR, "X_now.csv")
 X_NEXT_PATH = os.path.join(DATA_DIR, "X_next.csv")
 Y_PATH = os.path.join(DATA_DIR, "Y.csv")
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
 PREDICTION_DIR = os.path.join(BASE_DIR, "predictions")
 NORM_STATS_PATH = os.path.join(CHECKPOINT_DIR, "norm_stats.pt")
+# X_pred.csv 是模型推理输出、并非数据集，故随预测产物存放于 predictions/
+X_PRED_PATH = os.path.join(PREDICTION_DIR, "X_pred.csv")
 
 # ─── 设备 ───────────────────────────────────────────
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
