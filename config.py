@@ -16,8 +16,9 @@ Y_PATH = os.path.join(DATA_DIR, "Y.csv")
 CHECKPOINT_DIR = os.path.join(BASE_DIR, "checkpoints")
 PREDICTION_DIR = os.path.join(BASE_DIR, "predictions")
 NORM_STATS_PATH = os.path.join(CHECKPOINT_DIR, "norm_stats.pt")
-# X_pred.csv 是模型推理输出、并非数据集，故随预测产物存放于 predictions/
-X_PRED_PATH = os.path.join(PREDICTION_DIR, "X_pred.csv")
+# X_pred.csv 由 TrajectoryPrediction 生成、本项目消费（在预测模式下代替 X_next.csv），
+# 统一存放于工作空间顶层 Dataset/，确保上下游使用同一份（2026-09-13 归并）
+X_PRED_PATH = os.path.join(DATA_DIR, "X_pred.csv")
 
 # ─── 设备 ───────────────────────────────────────────
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
