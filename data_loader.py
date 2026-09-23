@@ -2,7 +2,7 @@
 数据加载与解析：CSV解析、PyTorch Dataset、自定义collate处理变长输入。
 """
 
-import ast
+import json
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -12,8 +12,14 @@ from physics_features import compute_sample_physics_features
 
 
 def parse_csv_row(row_str: str):
-    """将 CSV 行字符串解析为嵌套列表。"""
-    return ast.literal_eval(row_str.strip())
+    """将 CSV 行字符串解析为嵌套列表。
+
+    2026-09-22 修正：ast.literal_eval → json.loads。
+    原因：全量 Dataset/X_now.csv（217,642 行）中存在 literal_eval 无法解析的行
+    （TypeError: bad operand type for unary -: 'USub'），而 json.loads 可完整解析
+    （与 TrajectoryPrediction/utils/data_loader.py 的 parse_csv 同一口径，且快 10 倍以上）。
+    """
+    return json.loads(row_str.strip())
 
 
 def load_raw_data():

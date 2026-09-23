@@ -248,6 +248,17 @@ def train_model(train_loader, val_loader, device=None, stats=None):
     if device is None:
         device = config.DEVICE
 
+    # ─── 随机种子（环境变量 IR_SEED；0 或未设置 = 不固定，2026-09-22 新增）───
+    _seed = int(os.environ.get("IR_SEED", "0"))
+    if _seed > 0:
+        import random
+        random.seed(_seed)
+        np.random.seed(_seed)
+        torch.manual_seed(_seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(_seed)
+        print(f"[seed] 已固定随机种子 IR_SEED={_seed}")
+
     print("=" * 60)
     print("模型训练")
     print("=" * 60)
@@ -267,6 +278,8 @@ def train_model(train_loader, val_loader, device=None, stats=None):
     best_val_loss = float("inf")
     best_epoch = 0
     patience_counter = 0
+    start_epoch = 1
+    latest_path = os.path.join(config.CHECKPOINT_DIR, "latest.pt")
 
     # ─── 扩展的 history 字典 ───
     history = {
@@ -292,10 +305,25 @@ def train_model(train_loader, val_loader, device=None, stats=None):
         "grad_norm": [],        # 平均梯度范数
     }
 
+    # ─── 断点续训（2026-09-22 新增：IR_RESUME=1 且存在 latest.pt 时生效）───
+    # 动机：全量数据训练中途曾遇段错误崩溃，无续训则每次崩溃损失 35+ min
+    if os.environ.get("IR_RESUME", "0") == "1" and os.path.exists(latest_path):
+        _ck = torch.load(latest_path, map_location=device, weights_only=False)
+        model.load_state_dict(_ck["model_state_dict"])
+        optimizer.load_state_dict(_ck["optimizer_state_dict"])
+        scheduler.load_state_dict(_ck["scheduler_state_dict"])
+        best_val_loss = _ck["best_val_loss"]
+        best_epoch = _ck["best_epoch"]
+        patience_counter = _ck["patience_counter"]
+        history.update(_ck["history"])
+        start_epoch = _ck["epoch"] + 1
+        print(f"[resume] 从 epoch {_ck['epoch']} 续训 "
+              f"(best={best_epoch}, best_val_loss={best_val_loss:.4f})")
+
     os.makedirs(config.CHECKPOINT_DIR, exist_ok=True)
     best_model_path = os.path.join(config.CHECKPOINT_DIR, "best_model.pt")
 
-    for epoch in range(1, config.MAX_EPOCHS + 1):
+    for epoch in range(start_epoch, config.MAX_EPOCHS + 1):
         epoch_start = time.time()
 
         # ── 训练 ──
@@ -364,6 +392,18 @@ def train_model(train_loader, val_loader, device=None, stats=None):
         if patience_counter >= config.EARLY_STOP_PATIENCE:
             print(f"早停触发！连续 {config.EARLY_STOP_PATIENCE} 轮未改善。")
             break
+
+        # ── 每轮保存断点（供 IR_RESUME 续训，2026-09-22 新增）──
+        torch.save({
+            "epoch": epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict(),
+            "best_val_loss": best_val_loss,
+            "best_epoch": best_epoch,
+            "patience_counter": patience_counter,
+            "history": history,
+        }, latest_path)
 
     # ── 加载最佳模型 ──
     checkpoint = torch.load(best_model_path, map_location=device, weights_only=False)

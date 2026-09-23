@@ -144,6 +144,10 @@ def prepare_data():
         count = n_values.count(n_val)
         print(f"  N={n_val}: {count} 样本 ({100*count/total:.1f}%)")
 
+    # 2026-09-22：显式释放原始解析列表（全量数据下约 3~5 GB Python 对象），
+    # 避免与 all_samples 并存导致内存峰值过高（曾在中途触发段错误）
+    del x_now_raw, x_next_raw, y_raw
+
     # 3. 同步划分
     print(f"划分训练/验证/测试集 (种子={config.RANDOM_SEED})...")
     train_idx, val_idx, test_idx = split_indices(total)
