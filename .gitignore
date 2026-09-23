@@ -40,3 +40,7 @@ Dataset_Summary/*.csv
 
 # 任务描述（不提交）
 Prompt.md
+
+# 推断产物与日志（体积/时效性，不入库）
+output/
+_logs/
