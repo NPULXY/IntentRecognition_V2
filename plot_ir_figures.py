@@ -51,15 +51,36 @@ import matplotlib                                                # 绘图总入�
 matplotlib.use("Agg")                                            # 无界面后端（批量出图必需）
 import matplotlib.pyplot as plt                                  # 绘图 API
 import scipy.io as sio                                           # .mat 数据导出
+from matplotlib import font_manager                              # 字体解析（用于 Times New Roman 可用性自检/定位）
 
 # ============================== 项目内模块 ==============================
 import config as C                                               # 全局配置：CHECKPOINT_DIR / BASE_DIR / DEVICE 等
 from evaluate import evaluate_model                              # 复用官方评估函数（保证与论文指标同口径）
 
 # ==================== 论文图样式配置（可调，与 TP 部分一致） ====================
+# ── 字体可用性自检：Times New Roman 缺失时 matplotlib 会静默回退 DejaVu Serif，
+#    图件字形将不符合论文要求，故此处显式解析一次并打印实际命中的字体文件。──
+try:
+    _tnr_file = font_manager.findfont(
+        font_manager.FontProperties(family="Times New Roman"),
+        fallback_to_default=False)                                # 不允许回退 → 缺失即抛异常
+    print(f"[字体] Times New Roman -> {_tnr_file}")                # 打印实际命中文件，便于核对
+except ValueError:                                                # 系统未安装 Times New Roman
+    print("[警告] 未找到 Times New Roman！图件将回退 DejaVu Serif，字形不符合论文要求。")
+    print("       处理：安装 Times New Roman（Windows 一般为 C:\\Windows\\Fonts\\times.ttf）后重跑。")
+
 plt.rcParams["font.family"] = "serif"                             # 衬线体（期刊惯例）
 plt.rcParams["font.serif"] = ["Times New Roman", "DejaVu Serif"]  # 首选 Times，缺字回退
-plt.rcParams["mathtext.fontset"] = "stix"                         # 数学字体与 Times 协调，变量斜体
+# 数学字体同样指定 Times New Roman 本体（而非 STIX），保证正文与公式字形完全统一。
+# 注：custom 模式下 TNR 若缺某数学符号，由 mathtext.fallback 兜底（需 matplotlib ≥ 3.4）。
+plt.rcParams["mathtext.fontset"] = "custom"                       # 自定义数学字体族（默认 stix 非新罗马）
+plt.rcParams["mathtext.rm"] = "Times New Roman"                   # 正体（如 \mathrm{min}）
+plt.rcParams["mathtext.it"] = "Times New Roman:italic"            # 斜体变量（如 N, d, phi）
+plt.rcParams["mathtext.bf"] = "Times New Roman:bold"              # 粗体
+plt.rcParams["mathtext.sf"] = "Times New Roman"                   # 无衬线（图中未用，保持统一）
+plt.rcParams["mathtext.tt"] = "Times New Roman"                   # 等宽（图中未用，保持统一）
+plt.rcParams["mathtext.cal"] = "Times New Roman:italic"           # 花体（图中未用，保持统一）
+plt.rcParams["mathtext.fallback"] = "stix"                        # 缺字回退 STIX（仅个别符号会触发）
 plt.rcParams["axes.unicode_minus"] = False                        # 负号用 ASCII（避免字体缺字符显示方框）
 plt.rcParams["svg.fonttype"] = "none"                             # SVG 文本保持可编辑
 plt.rcParams.update({
