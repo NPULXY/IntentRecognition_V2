@@ -202,8 +202,7 @@ def fig1_confusion_matrix(metrics, out_dir):
     ax.set_xlabel("Predicted $N$")                         # x 轴标签
     ax.set_ylabel("True $N$")                              # y 轴标签
     acc = metrics["n_accuracy"]                            # 总体准确率
-    ax.set_title(f"(a) Accuracy = {acc * 100:.3f}%, macro $F_1$ = {metrics['n_f1_macro']:.3f}",
-                 loc="left", pad=3)                        # 标题含 acc/F1（3 位小数：避免 99.997% 显示成 100.00%）
+    ax.set_title("(a)", loc="left", pad=3)                 # 面板标签（原含 acc/F1 数值，2026-09-30 用户要求去掉）
     cb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)  # 颜色条
     cb.set_label("Row-normalized", fontsize=8)             # 色标含义
     cb.ax.tick_params(labelsize=7)                         # 色标刻度字号
