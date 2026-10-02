@@ -65,13 +65,21 @@ LR_T0 = 20  # CosineAnnealingWarmRestarts 周期
 PHYS_FEAT_DIM = 10  # 每目标物理特征通道数（完整版）
 GLOBAL_FEAT_DIM = 9  # 全局特征维度
 
-# ─── 消融开关：逐目标物理特征（2026-10-02 新增）────────────
-# IR_ABLATION=raw → 仅保留原始 6 维状态（去掉 10 维逐目标物理特征）；
-#   9 维全局物理特征与 PairwiseInteraction 模块保持不变（架构不变，只改输入通道）。
-# 默认 full = 完整特征（6 状态 + 10 物理特征）。
-# PER_TARGET_FEAT_DIM 是"实际送入编码器"的逐目标特征通道数，全项目统一引用它。
-ABLATION_MODE = os.environ.get("IR_ABLATION", "full").strip().lower()
-PER_TARGET_FEAT_DIM = 0 if ABLATION_MODE in ("raw", "6raw", "no_phys") else PHYS_FEAT_DIM
+# ─── 消融开关：物理特征输入（2026-10-02）────────────────────
+# 三档累积消融（en : arm 名 / 输入构成）：
+#   full    : 6 维原始状态 + 10 维逐目标物理特征 + 9 维全局物理特征   （论文完整模型）
+#   raw     : 6 维原始状态 +                      9 维全局物理特征
+#   strict  : 6 维原始状态                                        （真正"只吃原始状态"）
+# 对应 IR_ABLATION = full / raw / strict。PairwiseInteraction 是置换不变架构模块，
+# 其输入为目标嵌入（由原始状态编码而来），三档下均保留，不随消融关闭。
+_ABL = os.environ.get("IR_ABLATION", "full").strip().lower()
+ABLATION_MODE = _ABL
+
+# 逐目标物理特征的实际通道数（送入编码器的那部分）
+PER_TARGET_FEAT_DIM = (0 if _ABL in ("raw", "6raw", "no_phys", "strict")
+                       else PHYS_FEAT_DIM)
+# 全局物理特征的实际通道数（送入 global_fusion 的那部分）
+GLOBAL_FEAT_ACTUAL = 0 if _ABL == "strict" else GLOBAL_FEAT_DIM
 
 # 多任务损失权重
 LOSS_WEIGHT_N = 1.0
@@ -91,6 +99,6 @@ os.makedirs(PREDICTION_DIR, exist_ok=True)
 # ─── 配置快照打印（消融实验可追溯）──────────────────────
 print(f"[config] ABLATION_MODE={ABLATION_MODE} | "
       f"PER_TARGET_FEAT_DIM={PER_TARGET_FEAT_DIM} | "
-      f"GLOBAL_FEAT_DIM={GLOBAL_FEAT_DIM} | "
+      f"GLOBAL_FEAT_ACTUAL={GLOBAL_FEAT_ACTUAL} | "
       f"encoder_in={STATE_DIM + PER_TARGET_FEAT_DIM} | "
       f"TAG={ABLATION_TAG or '(main)'}")

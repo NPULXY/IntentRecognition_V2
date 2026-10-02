@@ -73,12 +73,9 @@ def compute_normalization_stats(train_samples):
 
     all_pos = np.concatenate(all_pos, axis=0)
     all_vel = np.concatenate(all_vel, axis=0)
-    all_global = np.stack(all_global, axis=0)
-    all_y = np.stack(all_y, axis=0)
 
-    # 逐目标物理特征的统计量：消融模式下该通道数为 0（PER_TARGET_FEAT_DIM=0），
-    # 此时 np.concatenate 得到形状 (0,)，对其求均值会触发 "Mean of empty slice" 警告
-    # 并返回 NaN —— 虽然宽度为 0 不会影响任何数值，这里显式短路以免污染日志。
+    # 逐目标物理特征：消融档下通道数为 0 时跳过收集与统计（避免 reshape(-1,0) 报错
+    # 与 "Mean of empty slice" 的 NaN 警告）
     if config.PER_TARGET_FEAT_DIM > 0:
         all_feats = np.concatenate(all_feats, axis=0)
         phys_mean = all_feats.mean(axis=0).astype(np.float32)
@@ -87,6 +84,17 @@ def compute_normalization_stats(train_samples):
         phys_mean = np.zeros(0, dtype=np.float32)
         phys_std = np.ones(0, dtype=np.float32)
 
+    # 全局物理特征：strict 档 GLOBAL_FEAT_ACTUAL=0 → 同样短路
+    if config.GLOBAL_FEAT_ACTUAL > 0:
+        all_global = np.stack(all_global, axis=0)
+        global_mean = all_global.mean(axis=0).astype(np.float32)
+        global_std = all_global.std(axis=0).astype(np.float32) + 1e-8
+    else:
+        global_mean = np.zeros(0, dtype=np.float32)
+        global_std = np.ones(0, dtype=np.float32)
+
+    all_y = np.stack(all_y, axis=0)
+
     stats = {
         "pos_mean": all_pos.mean(axis=0).astype(np.float32),
         "pos_std": all_pos.std(axis=0).astype(np.float32) + 1e-8,
@@ -94,8 +102,8 @@ def compute_normalization_stats(train_samples):
         "vel_std": all_vel.std(axis=0).astype(np.float32) + 1e-8,
         "phys_mean": phys_mean,
         "phys_std": phys_std,
-        "global_mean": all_global.mean(axis=0).astype(np.float32),
-        "global_std": all_global.std(axis=0).astype(np.float32) + 1e-8,
+        "global_mean": global_mean,
+        "global_std": global_std,
         "y_mean": all_y.mean(axis=0).astype(np.float32),
         "y_std": all_y.std(axis=0).astype(np.float32) + 1e-8,
     }

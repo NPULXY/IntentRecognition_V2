@@ -185,7 +185,7 @@ class IntentRecognitionModel(nn.Module):
             dropout=config.DROPOUT,
         )
         self.global_fusion = nn.Sequential(
-            nn.Linear(config.TARGET_EMBED_DIM + config.GLOBAL_FEAT_DIM,
+            nn.Linear(config.TARGET_EMBED_DIM + config.GLOBAL_FEAT_ACTUAL,
                       config.TARGET_EMBED_DIM),
             nn.ReLU(),
             nn.Dropout(config.DROPOUT),

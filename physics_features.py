@@ -269,6 +269,8 @@ def compute_sample_physics_features(trajectory: np.ndarray, N: int):
 
     all_distances = np.linalg.norm(pos, axis=-1).flatten()
 
+    # 全局物理特征先按完整 9 维算，末尾按消融档位裁剪
+    # （strict 档 GLOBAL_FEAT_ACTUAL=0 → 全局物理特征整体不进入模型）
     global_feats = np.zeros(config.GLOBAL_FEAT_DIM, dtype=np.float32)
     global_feats[0] = np.min(all_distances)
     global_feats[1] = np.max(all_distances)
@@ -302,4 +304,5 @@ def compute_sample_physics_features(trajectory: np.ndarray, N: int):
     dist_at_min_time = all_dist_reshaped[:, min_time_idx[1]]  # (N,)
     global_feats[7] = np.std(dist_at_min_time)
 
-    return per_target_feats, global_feats
+    # 按消融档位裁剪全局特征宽度（full/raw 保留 9 维；strict 裁成 0 维）
+    return per_target_feats, global_feats[:config.GLOBAL_FEAT_ACTUAL]
