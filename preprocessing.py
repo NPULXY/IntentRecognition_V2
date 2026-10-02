@@ -63,23 +63,37 @@ def compute_normalization_stats(train_samples):
         N = s["N"]
         all_pos.append(s["trajectory"][:N, :, 0:3].reshape(-1, 3))
         all_vel.append(s["trajectory"][:N, :, 3:6].reshape(-1, 3))
-        all_feats.append(s["per_target_feats"][:N].reshape(-1, s["per_target_feats"].shape[-1]))
+        # 逐目标物理特征：通道数为 0 时 reshape(-1, 0) 会因尺寸歧义报错，直接跳过收集
+        if config.PER_TARGET_FEAT_DIM > 0:
+            all_feats.append(
+                s["per_target_feats"][:N].reshape(-1, s["per_target_feats"].shape[-1])
+            )
         all_global.append(s["global_feats"])
         all_y.append(s["y"])
 
     all_pos = np.concatenate(all_pos, axis=0)
     all_vel = np.concatenate(all_vel, axis=0)
-    all_feats = np.concatenate(all_feats, axis=0)
     all_global = np.stack(all_global, axis=0)
     all_y = np.stack(all_y, axis=0)
+
+    # 逐目标物理特征的统计量：消融模式下该通道数为 0（PER_TARGET_FEAT_DIM=0），
+    # 此时 np.concatenate 得到形状 (0,)，对其求均值会触发 "Mean of empty slice" 警告
+    # 并返回 NaN —— 虽然宽度为 0 不会影响任何数值，这里显式短路以免污染日志。
+    if config.PER_TARGET_FEAT_DIM > 0:
+        all_feats = np.concatenate(all_feats, axis=0)
+        phys_mean = all_feats.mean(axis=0).astype(np.float32)
+        phys_std = all_feats.std(axis=0).astype(np.float32) + 1e-8
+    else:
+        phys_mean = np.zeros(0, dtype=np.float32)
+        phys_std = np.ones(0, dtype=np.float32)
 
     stats = {
         "pos_mean": all_pos.mean(axis=0).astype(np.float32),
         "pos_std": all_pos.std(axis=0).astype(np.float32) + 1e-8,
         "vel_mean": all_vel.mean(axis=0).astype(np.float32),
         "vel_std": all_vel.std(axis=0).astype(np.float32) + 1e-8,
-        "phys_mean": all_feats.mean(axis=0).astype(np.float32),
-        "phys_std": all_feats.std(axis=0).astype(np.float32) + 1e-8,
+        "phys_mean": phys_mean,
+        "phys_std": phys_std,
         "global_mean": all_global.mean(axis=0).astype(np.float32),
         "global_std": all_global.std(axis=0).astype(np.float32) + 1e-8,
         "y_mean": all_y.mean(axis=0).astype(np.float32),

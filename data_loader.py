@@ -134,7 +134,7 @@ def collate_fn(batch):
     B = len(batch)
 
     trajectories = torch.zeros(B, N_max, config.NUM_TIMESTEPS, config.STATE_DIM)
-    per_target_feats = torch.zeros(B, N_max, config.NUM_TIMESTEPS, config.PHYS_FEAT_DIM)
+    per_target_feats = torch.zeros(B, N_max, config.NUM_TIMESTEPS, config.PER_TARGET_FEAT_DIM)
     global_feats = torch.zeros(B, config.GLOBAL_FEAT_DIM)
     y_batch = torch.zeros(B, 3)
     masks = torch.zeros(B, N_max, dtype=torch.bool)

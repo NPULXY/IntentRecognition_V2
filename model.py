@@ -168,7 +168,7 @@ class IntentRecognitionModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.encoder = PerTargetEncoder(
-            input_dim=config.STATE_DIM + config.PHYS_FEAT_DIM,
+            input_dim=config.STATE_DIM + config.PER_TARGET_FEAT_DIM,
             hidden_dim=config.HIDDEN_DIM,
             embed_dim=config.TARGET_EMBED_DIM,
             dropout=config.DROPOUT,

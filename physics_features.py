@@ -248,10 +248,20 @@ def compute_sample_physics_features(trajectory: np.ndarray, N: int):
     为单个样本计算完整的物理特征。
 
     返回:
-        per_target_feats: (N, 20, 10) 每目标特征
-        global_feats: (9,) 全局特征
+        per_target_feats: (N, 20, config.PER_TARGET_FEAT_DIM) 每目标特征
+            —— 完整模式下 PER_TARGET_FEAT_DIM=10；消融模式（IR_ABLATION=raw）下为 0，
+               即只把原始 6 维状态送入编码器，逐目标物理特征被整段移除。
+        global_feats: (9,) 全局特征（消融模式下保留，架构不变）
     """
-    per_target_feats = compute_per_target_features(trajectory, N)
+    # 逐目标物理特征：消融模式下直接跳过计算（省时且语义干净，
+    # 不是"算完再置零"，避免任何数值残留影响）
+    if config.PER_TARGET_FEAT_DIM > 0:
+        per_target_feats = compute_per_target_features(trajectory, N)
+        per_target_feats = per_target_feats[:, :, :config.PER_TARGET_FEAT_DIM]
+    else:
+        per_target_feats = np.zeros(
+            (N, config.NUM_TIMESTEPS, 0), dtype=np.float32
+        )
     pair_feats = compute_inter_target_features(trajectory, N)
 
     pos = trajectory[:N, :, 0:3]
